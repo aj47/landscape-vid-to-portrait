@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import filedialog
 from tkinter import messagebox
 import numpy as np
+from tqdm import tqdm
 
 def select_video_file():
     root = tk.Tk()
@@ -38,11 +39,14 @@ def detect_faces_in_video(video_path):
     output_width = 1080
     output_height = 1920
 
-    # Create VideoWriter object for output
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Use appropriate codec
-    out = cv2.VideoWriter('output.mp4', fourcc, 20.0, (output_width, output_height))
+    # Get total number of frames
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    while True:
+    # Create a list to store processed frames
+    processed_frames = []
+
+    # Process each frame with a progress bar
+    for _ in tqdm(range(total_frames), desc="Processing frames"):
         # Read a frame from the video
         ret, frame = cap.read()
         if not ret:
@@ -95,17 +99,33 @@ def detect_faces_in_video(video_path):
         # Write the vertical frame to the output video
         out.write(vertical_frame)
 
-        # Display the resulting frame (optional)
-        cv2.imshow('Face Detection', vertical_frame)
+        processed_frames.append(vertical_frame)
 
-        # Break the loop on 'q' key press
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-    # Release the capture, output video, and close windows
+    # Release the capture
     cap.release()
-    out.release()
-    cv2.destroyAllWindows()
+
+    # Ask the user for the save location
+    save_path = filedialog.asksaveasfilename(
+        title="Save Vertical Video",
+        defaultextension=".mp4",
+        filetypes=[("MP4 files", "*.mp4"), ("All files", "*.*")]
+    )
+
+    if save_path:
+        # Create VideoWriter object for output
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Use appropriate codec
+        out = cv2.VideoWriter(save_path, fourcc, 20.0, (output_width, output_height))
+
+        # Write processed frames to the output video
+        for frame in tqdm(processed_frames, desc="Rendering video"):
+            out.write(frame)
+
+        # Release the output video
+        out.release()
+
+        print(f"Vertical video saved to: {save_path}")
+    else:
+        print("No save location selected.")
 
 if __name__ == "__main__":
     video_path = select_video_file()
