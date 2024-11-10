@@ -22,9 +22,8 @@ def select_video_file():
 def detect_faces_in_video(video_path, skip_frames=2, scale_factor=0.5):
     if not video_path:
         return
-    # Initialize MTCNN detector with GPU if available
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    detector = MTCNN(keep_all=True, device=device)
+    # Initialize MTCNN detector (CPU only for now)
+    detector = MTCNN(keep_all=True)
 
     # Start video capture from file
     cap = cv2.VideoCapture(video_path)
