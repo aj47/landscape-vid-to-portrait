@@ -1,5 +1,6 @@
 import cv2
-from mtcnn import MTCNN
+from facenet_pytorch import MTCNN
+import torch
 import tkinter as tk
 from tkinter import filedialog
 from tkinter import messagebox
@@ -21,8 +22,9 @@ def select_video_file():
 def detect_faces_in_video(video_path, skip_frames=2, scale_factor=0.5):
     if not video_path:
         return
-    # Initialize MTCNN detector
-    detector = MTCNN()
+    # Initialize MTCNN detector with GPU if available
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    detector = MTCNN(keep_all=True, device=device)
 
     # Start video capture from file
     cap = cv2.VideoCapture(video_path)
@@ -61,12 +63,15 @@ def detect_faces_in_video(video_path, skip_frames=2, scale_factor=0.5):
             rgb_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
             
             # Perform face detection
-            detections = detector.detect_faces(rgb_frame)
+            boxes, _ = detector.detect(rgb_frame)
             
-            # Scale coordinates back up
-            for detection in detections:
-                box = detection['box']
-                detection['box'] = [int(coord / scale_factor) for coord in box]
+            # Convert detections to list format
+            detections = []
+            if boxes is not None:
+                for box in boxes:
+                    # Scale coordinates back up
+                    scaled_box = [int(coord / scale_factor) for coord in box[:4]]
+                    detections.append({'box': scaled_box})
         else:
             # Use previous detections for skipped frames
             detections = []
