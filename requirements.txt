@@ -1,2 +1,3 @@
 opencv-python>=4.8.0
-xailient>=1.0.0
+mtcnn>=0.1.1
+tensorflow>=2.0.0
