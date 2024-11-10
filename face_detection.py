@@ -17,7 +17,7 @@ def select_video_file():
     )
     return file_path
 
-def detect_faces_in_video(video_path, skip_frames=2, scale_factor=0.5):
+def detect_faces_in_video(video_path, skip_frames=2, scale_factor=0.5, update_interval_secs=5):
     if not video_path:
         return
     # Initialize OpenCV's face detector
@@ -35,8 +35,10 @@ def detect_faces_in_video(video_path, skip_frames=2, scale_factor=0.5):
     output_width = 1080
     output_height = 1920
 
-    # Get total number of frames
+    # Get video properties
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    fps = int(cap.get(cv2.CAP_PROP_FPS))
+    frames_between_updates = fps * update_interval_secs
 
     # Create VideoWriter object for output
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Use appropriate codec
@@ -45,16 +47,20 @@ def detect_faces_in_video(video_path, skip_frames=2, scale_factor=0.5):
     # Create a list to store processed frames
     processed_frames = []
 
-    # Process each frame with a progress bar
+    # Variables to store face detection state
     frame_count = 0
+    current_face = None
+    last_detection_frame = 0
+
+    # Process each frame with a progress bar
     for _ in tqdm(range(total_frames), desc="Processing frames"):
         # Read a frame from the video
         ret, frame = cap.read()
         if not ret:
             break
 
-        # Process every Nth frame
-        if frame_count % skip_frames == 0:
+        # Update face detection every N seconds or if we don't have a face yet
+        if current_face is None or (frame_count - last_detection_frame) >= frames_between_updates:
             # Downscale for detection
             small_frame = cv2.resize(frame, (0, 0), fx=scale_factor, fy=scale_factor)
             rgb_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
@@ -62,33 +68,25 @@ def detect_faces_in_video(video_path, skip_frames=2, scale_factor=0.5):
             # Perform face detection
             faces = face_cascade.detectMultiScale(rgb_frame, 1.1, 4)
             
-            # Convert detections to list format
-            detections = []
+            # Find the largest face
+            largest_area = 0
             for (x, y, w, h) in faces:
                 # Scale coordinates back up
                 scaled_box = [int(coord / scale_factor) for coord in [x, y, w, h]]
-                detections.append({'box': scaled_box})
-        else:
-            # Use previous detections for skipped frames
-            detections = []
+                area = scaled_box[2] * scaled_box[3]
+                if area > largest_area:
+                    largest_area = area
+                    current_face = {'box': scaled_box}
+            
+            last_detection_frame = frame_count
 
         frame_count += 1
-
-        # Find the largest face
-        largest_face = None
-        largest_area = 0
-        for detection in detections:
-            x, y, w, h = detection['box']
-            area = w * h
-            if area > largest_area:
-                largest_area = area
-                largest_face = detection
 
         # Create a blank vertical frame
         vertical_frame = np.zeros((output_height, output_width, 3), dtype=np.uint8)
 
-        if largest_face:
-            x, y, w, h = largest_face['box']
+        if current_face:
+            x, y, w, h = current_face['box']
 
             # Crop the largest face
             face_crop = frame[y:y + h, x:x + w]
