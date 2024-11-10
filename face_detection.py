@@ -42,6 +42,10 @@ def detect_faces_in_video(video_path):
     # Get total number of frames
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
+    # Create VideoWriter object for output
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Use appropriate codec
+    out = cv2.VideoWriter('temp.mp4', fourcc, 20.0, (output_width, output_height))
+
     # Create a list to store processed frames
     processed_frames = []
 
@@ -101,8 +105,14 @@ def detect_faces_in_video(video_path):
 
         processed_frames.append(vertical_frame)
 
-    # Release the capture
+        # Write the vertical frame to the output video
+        out.write(vertical_frame)
+
+        processed_frames.append(vertical_frame)
+
+    # Release the capture and temporary video file
     cap.release()
+    out.release()
 
     # Ask the user for the save location
     save_path = filedialog.asksaveasfilename(
@@ -112,7 +122,7 @@ def detect_faces_in_video(video_path):
     )
 
     if save_path:
-        # Create VideoWriter object for output
+        # Create VideoWriter object for output with the chosen save path
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Use appropriate codec
         out = cv2.VideoWriter(save_path, fourcc, 20.0, (output_width, output_height))
 
