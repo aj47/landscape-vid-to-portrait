@@ -1,8 +1,24 @@
 import cv2
 from xailient import Xailient
-import argparse
+import tkinter as tk
+from tkinter import filedialog
+from tkinter import messagebox
+
+def select_video_file():
+    root = tk.Tk()
+    root.withdraw()  # Hide the main window
+    file_path = filedialog.askopenfilename(
+        title="Select Video File",
+        filetypes=[
+            ("Video files", "*.mp4 *.avi *.mov *.mkv"),
+            ("All files", "*.*")
+        ]
+    )
+    return file_path
 
 def detect_faces_in_video(video_path):
+    if not video_path:
+        return
     # Initialize Xailient model
     model = Xailient()
 
@@ -43,8 +59,8 @@ def detect_faces_in_video(video_path):
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Detect faces in a video file')
-    parser.add_argument('video_path', type=str, help='Path to the video file')
-    args = parser.parse_args()
-    
-    detect_faces_in_video(args.video_path)
+    video_path = select_video_file()
+    if video_path:
+        detect_faces_in_video(video_path)
+    else:
+        print("No video file selected.")
