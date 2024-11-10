@@ -42,14 +42,28 @@ def detect_faces_in_video(video_path):
         # Perform face detection
         detections = detector.detect_faces(rgb_frame)
 
+        # Find the largest face
+        largest_face = None
+        largest_area = 0
+        for detection in detections:
+            x, y, w, h = detection['box']
+            area = w * h
+            if area > largest_area:
+                largest_area = area
+                largest_face = detection
+
         # Draw rectangles around detected faces
         for detection in detections:
             x, y, w, h = detection['box']
             confidence = detection['confidence']
-            
+
             # Draw rectangle around face
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
-            
+            if detection == largest_face:
+                color = (0, 0, 255)  # Red for the largest face
+            else:
+                color = (255, 0, 0)  # Blue for other faces
+            cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
+
             # Display confidence score
             cv2.putText(frame, f"{confidence:.2f}", (x, y - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
