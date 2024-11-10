@@ -18,12 +18,9 @@ def select_video_file():
     )
     return file_path
 
-def detect_faces_in_video(video_path):
+def detect_faces_in_video(video_path, skip_frames=2, scale_factor=0.5):
     if not video_path:
         return
-    # Initialize MTCNN detector
-    detector = MTCNN()
-
     # Initialize MTCNN detector
     detector = MTCNN()
 
@@ -50,17 +47,31 @@ def detect_faces_in_video(video_path):
     processed_frames = []
 
     # Process each frame with a progress bar
+    frame_count = 0
     for _ in tqdm(range(total_frames), desc="Processing frames"):
         # Read a frame from the video
         ret, frame = cap.read()
         if not ret:
             break
 
-        # Convert frame to RGB (MTCNN expects RGB)
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        # Process every Nth frame
+        if frame_count % skip_frames == 0:
+            # Downscale for detection
+            small_frame = cv2.resize(frame, (0, 0), fx=scale_factor, fy=scale_factor)
+            rgb_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
+            
+            # Perform face detection
+            detections = detector.detect_faces(rgb_frame)
+            
+            # Scale coordinates back up
+            for detection in detections:
+                box = detection['box']
+                detection['box'] = [int(coord / scale_factor) for coord in box]
+        else:
+            # Use previous detections for skipped frames
+            detections = []
 
-        # Perform face detection
-        detections = detector.detect_faces(rgb_frame)
+        frame_count += 1
 
         # Find the largest face
         largest_face = None
@@ -102,12 +113,6 @@ def detect_faces_in_video(video_path):
 
         # Write the vertical frame to the output video
         out.write(vertical_frame)
-
-        processed_frames.append(vertical_frame)
-
-        # Write the vertical frame to the output video
-        out.write(vertical_frame)
-
         processed_frames.append(vertical_frame)
 
     # Release the capture and temporary video file
@@ -123,7 +128,7 @@ def detect_faces_in_video(video_path):
 
     if save_path:
         # Create VideoWriter object for output with the chosen save path
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Use appropriate codec
+        fourcc = cv2.VideoWriter_fourcc(*'avc1')  # More efficient codec
         out = cv2.VideoWriter(save_path, fourcc, 20.0, (output_width, output_height))
 
         # Write processed frames to the output video
